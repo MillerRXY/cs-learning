@@ -1,0 +1,241 @@
+* {
+  box-sizing: border-box;
+}
+
+.clearfix::after {
+  content: "";         /* 创建一个伪元素 */
+  clear: both;         /* 清除前面浮动元素的影响（不论 float: left 还是 right） */
+  display: table;      /* 让这个伪元素有“块级布局”的能力 */
+}
+
+.layout{
+    width: 80%;
+    min-width: 400px;
+    margin: 100px auto;
+}
+
+/*顶部导航栏*/
+ul.topnav {
+    height: 30px;
+    background-color: rgb(220,220,220);
+    padding: 0;
+    list-style-type: none;
+    display: flex;
+    justify-content: center;
+}
+
+.topnav li{
+  flex: 1;
+}
+
+.topnav li a{
+    text-decoration: none;
+    display: block;
+    text-align: center;
+    padding: 5px 0;
+    color: black;
+    font-family: Arial;
+    border: 1px solid #555;
+}
+
+li a:hover{
+    color: white;
+}
+
+/* 顶部导航栏中第一个按钮 */
+.topnav li:first-child a {
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+
+/* 顶部导航栏中最后一个按钮 */
+.topnav li:last-child a {
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
+}
+
+/*顶部下拉菜单*/
+.dropdown{
+  position: relative;
+  display: inline-block;
+}
+
+.dropdown-content {
+    width: 90%;
+    display: none;
+    position: absolute;
+    background-color:lightslategray;
+    border: 1px solid #555;
+    box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2);
+    z-index: 1;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-bottom-left-radius: 5px;
+    border-bottom-right-radius: 5px;
+}
+
+li.dropdown:hover .dropdown-content{
+    display: block;
+}
+
+.dropdown-content a{
+    display:block;
+    color: white;
+    text-align: center;
+    padding: 5px;
+    text-decoration: none;
+}
+
+.dropdown-content a:hover{
+    background-color: gray;
+}
+
+/*主要区域*/
+
+.main-area{
+    width: 100%;
+    display: flex;
+}
+
+/*左部导航栏*/
+ul.leftnav {
+    width: 15%;
+    display: flex;
+    flex-direction: column;
+    list-style-type: none;
+    border: 1px solid #646464;
+    padding: 0;
+    margin: 50px 0 0;
+    background: repeating-linear-gradient(
+        135deg,
+        #e5e5e5 0px,
+        #cbcbcb 1000px,
+        #e5e5e5 2000px,
+        #cbcbcb 3000px
+    );
+    background-size: 200px 3000px;
+}
+
+.leftnav li {
+    display: block;
+    width: 100%;
+}
+
+.leftnav li a{
+    display: block;
+    text-align: left;
+    color: rgb(28, 28, 28);
+    font-family: Arial;
+    text-align: left;
+    height: 40px;
+    line-height: 40px;
+    text-decoration: none;
+    padding-left: 15px;
+}
+
+.leftnav li a.highlight{
+    font-weight: bold;
+    font-size: 23px;
+    color: rgb(0, 0, 0);
+    padding-left: 15px;
+    height: 50px;
+    line-height: 50px;
+}
+
+.leftnav li.top{
+    display: flex;
+    pointer-events: none;
+    justify-content: center; 
+    align-items: center;
+    text-align:center;
+    background-color:#7c7c7c;
+    color: #dbdbdb;
+    height: 70px;
+    font-size: 25px;
+    overflow: hidden;
+}
+
+.leftnav li a:hover {
+  background-color: #b9b9b9;
+  font-weight: bold;
+}
+
+/*中部区域*/
+.main-content{
+    margin-top: 50px;
+    margin-left: 50px;
+    flex: 1;
+    background-color: #f0f0f0;
+    padding: 20px 20px;
+    position: relative;
+}
+
+/* 动画代码 */
+@keyframes example1 {
+  0%   { top: 0%; left: 0%; background-color: red; }
+  25%  { top: 0%; left: calc(100% - 100px); background-color: yellow; }
+  50%  { top: calc(100% - 100px); left: calc(100% - 100px); background-color: blue; }
+  75%  { top: calc(100% - 100px); left: 0%; background-color: green; }
+  100% { top: 0%; left: 0%; background-color: red; }
+}
+
+.animated-box {
+  width: 100px;
+  height: 100px;
+  background-color: red;
+  position: absolute;
+  animation-name: example1;
+  animation-duration: 4s;
+  animation-iteration-count: infinite;
+  animation-timing-function: ease-in-out;
+  border-radius: 7px;
+}
+
+.float-area {
+  width: 100%;
+  position: relative;
+  height: 440px;
+  margin-top: 70px;
+  background-color: #e8e8e8;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+/* 最下方 */
+li.active a{
+    background-color: rgb(156, 214, 242);
+    pointer-events: none;
+    text-decoration: none;
+    color: rgb(64, 64, 64);
+}
+
+@media screen and (max-width: 800px) {
+  ul.topnav {
+    flex-direction: column;   /* 横排变竖排 */
+    height: auto;
+    align-items: stretch;
+  }
+
+  .topnav li {
+    flex: none;
+  }
+
+  .topnav li a {
+    text-align: left;
+    padding: 10px 15px;
+    border-bottom: 1px solid #aaa;
+  }
+
+  .topnav li:first-child a {
+    border-radius: 5px 5px 0 0; /* 圆顶部两个角 */
+  }
+
+  .topnav li:last-child a {
+    border-radius: 0 0 5px 5px; /* 圆底部两个角 */
+  }
+
+  .leftnav li.top{
+    font-size: 12px;
+  }
+}
