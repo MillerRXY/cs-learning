@@ -31,8 +31,8 @@
     <!-- LeftNav -->
     <ul class ="leftnav">
         <li class="top">Examples</li>
-        <li class="active highlight"><a href="index.html">0</a></li>
-        <li ><a href="gacha.html">1</a></li>
+        <li><a href="index.html">0</a></li>
+        <li class="active highlight"><a href="gacha.html">1</a></li>
         <li><a href="#2">2</a></li>
         <li><a href="#3">3</a></li>
         <li><a href="#4">4</a></li>
@@ -137,18 +137,21 @@
         <div class="main-content">
         <h2 style="color: red;text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">欢迎来到我的网站</h2>
         <h3 id="clock" style="color: #333;">现在的时间是：--:--:--</h3>
-        <p>这是一个主内容区域，YouTube 视频：</p>
-            <div style="position:relative; padding-bottom:56.25%; height:0; overflow:hidden;">
-                <iframe src="https://www.youtube.com/embed/dQw4w9WgXcQ"
-                        style="position:absolute; top:0; left:0; width:100%; height:100%;"
-                        frameborder="0"
-                        allowfullscreen>
-                </iframe>
-            </div>
-            <hr style="margin-top: 80px;">
-            <div class="float-area"><div class="animated-box"></div></div>
-            <hr style="margin-top: 80px;">
+        <div class="gacha-box">
+            <button class="gacha-button single" onclick="handleSinglePull()">抽卡！</button>
+            <button class="gacha-button multi" onclick="handleTenPull()">十连！</button>
         </div>
+        <div class="result-box" id="resultContainer">
+            <!-- 单抽 -->
+            <div class="effect-border-box" id="effectBox">
+                <div class="inner-content" id="cardText">这里显示抽卡结果</div>
+            </div>
+
+            <!-- 十连 -->
+            <div id="multiResultBox" class="multi-result-box"></div>
+        </div>
+        </div>
+
     </div>
 </div>
 

@@ -202,6 +202,127 @@ ul.leftnav {
   border-radius: 10px;
 }
 
+/* 抽卡按钮*/
+.gacha-box {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(20px, 25%, 200px);
+  height: 300px;         /* 根据需要可改大 */
+  background-color: #f5f5f5;
+  border-radius: 10px;
+  margin-top: 40px;
+  border: none;
+}
+
+.gacha-button {
+  font-size: 28px;
+  padding: 20px 60px;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+}
+
+.gacha-button.single {
+    background-color: #45AF50;
+}
+
+.gacha-button.multi {
+    background-color: #e74c3c;
+}
+
+.gacha-button.single:hover {
+  background-color: #45a049;
+  transform: scale(1.05);
+}
+
+.gacha-button.multi:hover {
+  background-color: #c0392b;
+  transform: scale(1.05);
+}
+
+.gacha-button:active {
+  transform: scale(0.95);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+}
+
+/*抽卡动画*/
+.result-box {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 30px;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 20px;
+  margin-top: 40px;
+  background-color: #f5f5f5;
+  border-radius: 10px;
+}
+/* 单张卡片 */
+.effect-border-box {
+  width: 180px;
+  height: 180px;
+  background-size: 100% 300%;
+  animation: slideDown 2s linear infinite;
+  padding: 8px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.multi-result-box {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  grid-template-rows: repeat(2, auto);
+  gap: 12px;
+  min-width: 500px;
+  min-height: 220px;
+}
+
+/* 中心白色内容 */
+.inner-content {
+  width: 100%;
+  height: 100%;
+  background: white;
+  border-radius: 8px;
+  font-weight: bold;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #333;
+}
+
+.rarity-R {
+  background: linear-gradient(180deg, #74b9ff, #dfe6e9, #74b9ff);
+}
+
+.rarity-SR {
+  background: linear-gradient(180deg, #a29bfe, #3f51b5, #a29bfe);
+}
+
+.rarity-SSR {
+  background: linear-gradient(180deg, #f9ca24, #f0932b, #f9ca24);
+}
+
+/* 通用动画（下滑动效果） */
+.rarity-R,
+.rarity-SR,
+.rarity-SSR {
+  background-size: 100% 300%;
+  animation: slideDown 1s linear infinite;
+}
+
+/* 背景向下滑动动画 */
+@keyframes slideDown {
+  0% { background-position: 0 0; }
+  100% { background-position: 0 100%; }
+}
+
 /* 最下方 */
 li.active a{
     background-color: rgb(156, 214, 242);
@@ -238,4 +359,15 @@ li.active a{
   .leftnav li.top{
     font-size: 12px;
   }
+
+  .gacha-box {
+    flex-direction: column;
+    gap: 15px; /* 按钮之间垂直间距 */
+  }
+
+  .gacha-button {
+    width: 80%;          /* 按钮宽度适配手机屏 */
+    max-width: 300px;    /* 限制最大宽度 */
+  }
+
 }
