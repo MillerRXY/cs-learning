@@ -132,6 +132,9 @@ ul.leftnav {
     line-height: 40px;
     text-decoration: none;
     padding-left: 15px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .leftnav li a.highlight{
@@ -301,6 +304,16 @@ ul.leftnav {
     transform: translateX(0); 
 }
 
+/*左下提示栏*/
+.mini-gacha-stats {
+  position: absolute;
+  bottom: 4px;
+  left: 4px;
+  color: #333;
+  font-size: 7px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
 /*抽卡动画*/
 .result-box {
   display: flex;
@@ -323,8 +336,6 @@ ul.leftnav {
 .effect-border-box {
   width: 180px;
   height: 180px;
-  background-size: 100% 300%;
-  animation: slideDown 2s linear infinite;
   padding: 8px;
   border-radius: 12px;
   display: flex;
@@ -353,32 +364,28 @@ ul.leftnav {
   align-items: center;
   justify-content: center;
   color: #333;
+  padding: 0 10px;
+  text-align: center;
 }
 
 .rarity-R {
-  background: linear-gradient(180deg, #74b9ff, #dfe6e9, #74b9ff);
+  background: linear-gradient(180deg, #74b9ff, #dfe6e9, #74b9ff) !important;
+  background-size: 100% 300%;
 }
 
 .rarity-SR {
-  background: linear-gradient(180deg, #a29bfe, #3f51b5, #a29bfe);
+  background: linear-gradient(180deg, #a29bfe, #3f51b5, #a29bfe) !important;
+  background-size: 100% 300%;
 }
 
 .rarity-SSR {
-  background: linear-gradient(180deg, #f9ca24, #f0932b, #f9ca24);
-}
-
-.rarity-UR {
-  background: linear-gradient(180deg, #ffd700, #ff4d4d, #ffd700); /* 金 -> 红 -> 金 */
-}
-
-
-/* 通用动画（下滑动效果） */
-.rarity-R,
-.rarity-SR,
-.rarity-SSR,
-.rarity-UR {
+  background: linear-gradient(180deg, #f9ca24, #f0932b, #f9ca24) !important;
   background-size: 100% 300%;
-  animation: slideDown 1s linear infinite;
+}
+
+.rarity-UR {
+  background: linear-gradient(180deg, #ffd700, #ff4d4d, #ffd700) !important;
+  background-size: 100% 300%;
 }
 
 /* 超级保底动画 */
@@ -393,15 +400,7 @@ ul.leftnav {
 /* extraAnimation 为 true 时，使用这个炫彩动画 */
 .effect-border-box.extra-animation {
   animation: rainbowFlash 2s ease infinite,
-             slideDown 1s linear infinite; /* 保留原有下滑动画 */
-  background-size: 200% 200%;
-}
-
-
-/* 背景向下滑动动画 */
-@keyframes slideDown {
-  0% { background-position: 0 0; }
-  100% { background-position: 0 100%; }
+             slideDown 1s linear infinite !important;
 }
 
 /*潜出动画*/
@@ -422,10 +421,29 @@ ul.leftnav {
   }
 }
 
-/* 加上 forwards 让它结束后保持在 100% 状态 */
 .appear-from-top-right {
   animation: fadeSlideIn 0.6s ease-out forwards;
 }
+
+/* 统计栏 */
+
+.gacha-summary {
+    background-color: #ffe4d4;
+    padding: 20px;
+    margin-top: 30px;
+    border-radius: 10px;
+    text-align: left;
+}
+
+.gacha-summary p {
+    font-size: 16px;
+    color: #333;
+    margin: 0;
+    font-family: 'Noto Sans SC', sans-serif;
+    line-height: 1.8;
+    padding-left: 30px;  
+}
+
 
 /* 最下方 */
 li.active a{
@@ -460,6 +478,14 @@ li.active a{
     border-radius: 0 0 5px 5px; /* 圆底部两个角 */
   }
 
+  .leftnav li a{
+    font-size: 7px;
+    overflow: clip;
+    text-overflow: clip;
+    white-space: normal;
+    left: 5%;
+  }
+
   .leftnav li.top{
     font-size: 12px;
   }
@@ -474,4 +500,8 @@ li.active a{
     max-width: 300px;    /* 限制最大宽度 */
   }
 
+  .multi-result-box {
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(5, auto);
+  }
 }

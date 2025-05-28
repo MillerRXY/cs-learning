@@ -30,9 +30,9 @@
 <div class="main-area">
     <!-- LeftNav -->
     <ul class ="leftnav">
-        <li class="top">Examples</li>
-        <li><a href="index.html">0</a></li>
-        <li class="active highlight"><a href="gacha.html">1</a></li>
+        <li class="top">花活儿</li>
+        <li><a href="index.html">主页</a></li>
+        <li class="active highlight"><a href="gacha.html">Gacha Simulation</a></li>
         <li><a href="#2">2</a></li>
         <li><a href="#3">3</a></li>
         <li><a href="#4">4</a></li>
@@ -135,8 +135,10 @@
     </ul>
 
         <div class="main-content">
-        <h2 style="color: red;text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">欢迎来到我的网站</h2>
+        <h2 style="color: red;text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">欢迎来到MillerRXY的网站</h2>
         <h3 id="clock" style="color: #333;">现在的时间是：--:--:--</h3>
+        <hr style="margin-top: 30px;">
+        <h2> 这是模拟崩铁3.3版本风堇的卡池，祝你好运</h2>
         <div class="gacha-box">
             <button class="gacha-button single" onclick="handleSinglePull()">抽卡！</button>
             <button class="gacha-button multi" onclick="handleTenPull()">十连！</button>
@@ -145,6 +147,10 @@
                 <div class = "back">
                     <div class="circle"></div>
                 </div>
+            </div>
+             <div class="mini-gacha-stats">
+                <p id="pitySSR">距上次SSR: 0</p>
+                <p id="isPitied">是否有大保底: 否</p>
             </div>
         </div>
         <div class="result-box" id="resultContainer">
@@ -157,8 +163,19 @@
             <!-- 十连 -->
             <div id="multiResultBox" class="multi-result-box"></div>
         </div>
+        <div class="gacha-summary">
+            <p id="totalPull">总抽数: --</p>
+            <p id="countR">R卡数量: --</p>
+            <p id="countSR">SR卡数量: --</p>
+            <p id="countSSR">SSR卡数量: --</p>
+            <p id="countPitySSR">保底SSR数量: --</p>
+            <p id="countUR">出货数量: --</p>
+            <p id="freqSSR">平均--抽出一只SSR</p>
+            <p id="freqSR">平均--抽出一只SR</p>
         </div>
 
+
+        </div>
     </div>
 </div>
 
