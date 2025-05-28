@@ -6,6 +6,7 @@ const UR = ['WIN'];
 let totalPull = 0, countR = 0, countSR = 0, countSSR = 0, countPitySSR = 0;
 let pitySR = 0, pitySSR = 0, isPity = false, isPityCount = 0, extraAnimation = false;
 
+let isAnimationEnabled = true;
 
 function updateTime() {
   const now = new Date();
@@ -90,6 +91,11 @@ function handleSinglePull() {
 
   effectBox.style.display = 'flex'
   textBox.textContent = `抽到了 ${result.rarity}·${result.name}`;
+
+  // 动画添加
+  effectBox.classList.remove('appear-from-top-right');
+  void effectBox.offsetWidth;
+  effectBox.classList.add('appear-from-top-right');
   
   //清空十连
   multiBox.innerHTML = '';
@@ -133,9 +139,22 @@ function handleTenPull() {
     cardBox.appendChild(inner);
     box.appendChild(cardBox);
 
+      // 强制重排 + 添加动画类
+    void cardBox.offsetWidth;
+    const delay = isAnimationEnabled ? i * 0 : i* 0.45;
+    cardBox.style.animationDelay = `${delay}s`;
+    cardBox.classList.add('appear-from-top-right');
+
     cardBox.classList.add(`rarity-${result.rarity}`);
     if (result.extra) {
         cardBox.classList.add('extra-animation');
     }
     }
 }
+
+const toggle = document.getElementById('toggleSwitch');
+
+  toggle.addEventListener('click', () => {
+    toggle.classList.toggle('off');
+    isAnimationEnabled = !toggle.classList.contains('off');
+  });
