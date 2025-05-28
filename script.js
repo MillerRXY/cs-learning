@@ -1,6 +1,11 @@
 const R = ['100', '200', '300', '400'];
 const SR = ['10', '20', '30', '40'];
-const SSR = ['1', '2', '3', '4']
+const SSR = ['1', '2', '3', '4'];
+const UR = ['WIN'];
+
+let totalPull = 0, countR = 0, countSR = 0, countSSR = 0, countPitySSR = 0;
+let pitySR = 0, pitySSR = 0, isPity = false, isPityCount = 0, extraAnimation = false;
+
 
 function updateTime() {
   const now = new Date();
@@ -14,13 +19,40 @@ function updateTime() {
 setInterval(updateTime, 1000);
 updateTime();
 
-
 function pullCardBanner() {
+  pitySR += 1;
+  pitySSR += 1;
   const roll = Math.random();
+  const upperRateSSR = pitySSR < 73 ? 0 : (pitySSR -73) * 0.06;
 
-  if (roll < 0.006) {
-    return 'SSR';
-  } else if (roll < 0.006 + 0.05) {
+  if (roll < 0.006 + upperRateSSR) {
+    pitySR = 0;
+    pitySSR = 0;
+
+    //超级大保底
+    if (isPityCount == 3 && isPity == false) {
+        isPityCount = 0;
+        extraAnimation = true;
+        return 'UR';
+    }
+
+    //保底决策
+    if (Math.random() < 0.5) {
+        isPityCount = 0;
+        isPity = false;
+        return 'UR';
+    } else {
+        if(isPity == true){
+            isPity = false;
+            return 'UR';
+        }
+        isPity = true;
+        isPityCount += 1;
+        return 'SSR';
+    }
+  //SR抽取
+  } else if (roll < 0.006 + 0.05 || pitySR >= 10) {
+    pitySR = 0;
     return 'SR';
   } else {
     return 'R';
@@ -32,16 +64,21 @@ function pullCard() {
 
   let pool;
   switch (rarity) {
+    case 'UR': pool = UR; break;
     case 'SSR': pool = SSR; break;
     case 'SR': pool = SR; break;
     case 'R': pool = R; break;
   }
 
   const name = pool[Math.floor(Math.random() * pool.length)];
-  return {
+  const card =  {
     name,
-    rarity
+    rarity,
+    extra: extraAnimation
   };
+
+  extraAnimation = false;
+  return card;
 }
 
 function handleSinglePull() {
@@ -49,31 +86,45 @@ function handleSinglePull() {
 
   const effectBox = document.getElementById('effectBox');
   const textBox = document.getElementById('cardText');
+  const multiBox = document.getElementById("multiResultBox");
 
-  // 清空十连
-  document.getElementById('multiResultBox').innerHTML = '';
-
-  // 恢复显示
-  effectBox.style.display = 'flex';
-
+  effectBox.style.display = 'flex'
   textBox.textContent = `抽到了 ${result.rarity}·${result.name}`;
-  effectBox.classList.remove('rarity-R', 'rarity-SR', 'rarity-SSR');
+  
+  //清空十连
+  multiBox.innerHTML = '';
+
+  //更新稀有度颜色
+  effectBox.classList.remove('rarity-R', 'rarity-SR', 'rarity-SSR', 'rarity-UR');
   effectBox.classList.add(`rarity-${result.rarity}`);
+
+  if(result.extra){
+    effectBox.classList.add('extra-animation');
+    extraAnimation = false;
+  }
 }
 
 
 function handleTenPull() {
+  //隐藏单抽区域
+  const effectBox = document.getElementById('effectBox');
+  const cardText = document.getElementById('cardText');
+  effectBox.style.display = 'none';
+  cardText.textContent = '';
+
+  //清空十连显示区域
   const box = document.getElementById('multiResultBox');
   box.innerHTML = '';
 
-  // 隐藏单抽框
-  const effectBox = document.getElementById('effectBox');
-  effectBox.style.display = 'none';
-
+  //添加 10 张卡片
   for (let i = 0; i < 10; i++) {
     const result = pullCard();
+    const rarityClass = `rarity-${result.rarity}`;
+
     const cardBox = document.createElement('div');
-    cardBox.className = `effect-border-box rarity-${result.rarity}`;
+    cardBox.className = `effect-border-box ${rarityClass}`;
+    cardBox.style.height = '100px'; // 可调
+    cardBox.style.width = '100px';
 
     const inner = document.createElement('div');
     inner.className = 'inner-content';
@@ -81,5 +132,10 @@ function handleTenPull() {
 
     cardBox.appendChild(inner);
     box.appendChild(cardBox);
-  }
+
+    cardBox.classList.add(`rarity-${result.rarity}`);
+    if (result.extra) {
+        cardBox.classList.add('extra-animation');
+    }
+    }
 }

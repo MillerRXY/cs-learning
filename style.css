@@ -255,13 +255,19 @@ ul.leftnav {
   flex-wrap: wrap;
   gap: 30px;
   justify-content: center;
-  align-items: flex-start;
+  align-items: center;
   padding: 20px;
   margin-top: 40px;
   background-color: #f5f5f5;
   border-radius: 10px;
 }
 /* 单张卡片 */
+.single-wrapper {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+}
+
 .effect-border-box {
   width: 180px;
   height: 180px;
@@ -279,8 +285,8 @@ ul.leftnav {
   grid-template-columns: repeat(5, 1fr);
   grid-template-rows: repeat(2, auto);
   gap: 12px;
-  min-width: 500px;
-  min-height: 220px;
+  width: 100%;
+  justify-items: center;
 }
 
 /* 中心白色内容 */
@@ -309,13 +315,36 @@ ul.leftnav {
   background: linear-gradient(180deg, #f9ca24, #f0932b, #f9ca24);
 }
 
+.rarity-UR {
+  background: linear-gradient(180deg, #ffd700, #ff4d4d, #ffd700); /* 金 -> 红 -> 金 */
+}
+
+
 /* 通用动画（下滑动效果） */
 .rarity-R,
 .rarity-SR,
-.rarity-SSR {
+.rarity-SSR,
+.rarity-UR {
   background-size: 100% 300%;
   animation: slideDown 1s linear infinite;
 }
+
+/* 超级保底动画 */
+@keyframes rainbowFlash {
+  0%   { background: linear-gradient(45deg, red, orange); }
+  25%  { background: linear-gradient(45deg, yellow, green); }
+  50%  { background: linear-gradient(45deg, blue, indigo); }
+  75%  { background: linear-gradient(45deg, violet, red); }
+  100% { background: linear-gradient(45deg, red, orange); }
+}
+
+/* extraAnimation 为 true 时，使用这个炫彩动画 */
+.effect-border-box.extra-animation {
+  animation: rainbowFlash 2s ease infinite,
+             slideDown 1s linear infinite; /* 保留原有下滑动画 */
+  background-size: 200% 200%;
+}
+
 
 /* 背景向下滑动动画 */
 @keyframes slideDown {
