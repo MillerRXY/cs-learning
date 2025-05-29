@@ -32,8 +32,8 @@
     <ul class ="leftnav">
         <li class="top">花活儿</li>
         <li><a href="index.html">主页</a></li>
-        <li class="active highlight"><a href="gacha.html">Gacha Simulation</a></li>
-        <li><a href="testPage.html">Skill Learning</a></li>
+        <li ><a href="gacha.html">Gacha Simulation</a></li>
+        <li class="active highlight"><a href="testPage.html">Skill Learning</a></li>
         <li><a href="#3">3</a></li>
         <li><a href="#4">4</a></li>
         <li><a href="#5">5</a></li>
@@ -135,45 +135,24 @@
     </ul>
 
         <div class="main-content">
-        <h2 style="color: red;text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">欢迎来到MillerRXY的网站</h2>
-        <h3 id="clock" style="color: #333;">现在的时间是：--:--:--</h3>
-        <hr style="margin-top: 30px;">
-        <h2> 这是模拟崩铁3.3版本风堇的卡池，祝你好运</h2>
-        <div class="gacha-box">
-            <button class="gacha-button single" onclick="handleSinglePull()">抽卡！</button>
-            <button class="gacha-button multi" onclick="handleTenPull()">十连！</button>
-            <div class="gacha-isAnimated-buttion" id="toggleSwitch">
-                <span>关闭动画</span>
-                <div class = "back">
-                    <div class="circle"></div>
-                </div>
+            <div style="display: flex; height: auto; width: 100%; justify-content: center; align-items: center;gap: 50px; margin: 50px 0;">
+            <button id="btn1" class="gacha-button" style="background-color: red; width:33%">再点一次就会爆炸</button>
+            <button id="btn2" class="gacha-button" style="background-color: rgb(187, 187, 6); width: 33%;">再看一眼快被融化</button>
+            <button class="mini-button" onclick="chickenURSoBeautiful()">只因？</button>
             </div>
-             <div class="mini-gacha-stats">
-                <p id="pitySSR">距上次SSR: 0</p>
-                <p id="isPitied">是否有大保底: 否</p>
+            <div style="display:block; height: auto; width: 100%; background-color: #ffc38aac; border-radius: 10px; padding: 20px 20px; white-space: normal;">
+                <p id="mouse-coords">鼠标坐标：X: 0, Y: 0</p>
+                <p id="window-size">当前窗口大小：宽: 0, 高: 0</p>
+                <p>
+                    <script>
+                         document.write(location.href);
+                    </script>
+                </p>
+                <p id="hostname">主机名：</p>
+                <p id="pathname">路径：</p>
+                <p id="port">端口：</p>
+                <p id="protocol">协议：</p>
             </div>
-        </div>
-        <div class="result-box" id="resultContainer">
-            <!-- 单抽 -->
-             <div class="single-wrapper">
-            <div class="effect-border-box" id="effectBox" style="display: none;">
-                <div class="inner-content" id="cardText"></div>
-            </div>
-            </div>
-            <!-- 十连 -->
-            <div id="multiResultBox" class="multi-result-box"></div>
-        </div>
-        <div class="gacha-summary">
-            <p id="totalPull">总抽数: --</p>
-            <p id="countR">R卡数量: --</p>
-            <p id="countSR">SR卡数量: --</p>
-            <p id="countSSR">SSR卡数量: --</p>
-            <p id="countPitySSR">保底SSR数量: --</p>
-            <p id="countUR">出货数量: --</p>
-            <p id="freqSSR">平均--抽出一只SSR</p>
-            <p id="freqSR">平均--抽出一只SR</p>
-        </div>
-
 
         </div>
     </div>
@@ -181,5 +160,87 @@
 
 <script src="script.js"></script>
 </body>
+<script>
+    document.getElementById("btn1").addEventListener("click", explosion);
+    function explosion() {
+        for(let i = 0; i < 10; i++){
+            alert("Boom!");
+        }
+    }
+    let myWindow = null;
+    let userScreenWidth = window.screen.width;
+    let userScreenHeight = window.screen.height;
+    let randomX = 0, randomY = 0;
+    let canMove = true;
+    document.getElementById("btn2").addEventListener("click", openWin);
+    document.addEventListener("mousemove", function(event) {
+    let userX = event.clientX;
+    let userY = event.clientY;
+    if (randomX <= userX && userX <= randomX + 100 && randomY <= userY && userY <= randomY + 100) {
+        canMove = false;
+        moveWin();
+        }
+        setTimeout(() => {
+        canMove = true;
+        }, 300);
+    });
+    function openWin(){
+        myWindow=window.open('','','width=100,height=100');
+        myWindow.document.write("<p>抓不住我</p>");
+    }
+    function moveWin(){
+        randomX = Math.random() * userScreenWidth;
+        randomY = Math.random() * userScreenHeight;
+        if (myWindow && !myWindow.closed) {
+            myWindow.moveTo(randomX > 100 ? randomX : 0, randomY > 100 ? randomY : 0);
+            myWindow.focus();
+        }
+    }
 
+    function chickenURSoBeautiful(){
+        const targets = document.querySelectorAll(".topnav, .leftnav, .main-content");
+        targets.forEach(el => el.style.display = "none");
+        document.body.innerHTML = "";
+        const img = document.createElement("img");
+        img.src = "beautifulChicken.png";
+        img.alt = "你太美";
+        img.className = "fade-in-img";
+
+        document.body.appendChild(img);
+        img.addEventListener("animationend", startBackgroundColorLoop);
+    }
+
+    function startBackgroundColorLoop(){
+        let index = 0;
+        let r=0, g=0, b=0 ;
+        setInterval(() => {
+            const r = Math.floor(Math.random() * 256);
+            const g = Math.floor(Math.random() * 256);
+            const b = Math.floor(Math.random() * 256);
+            document.body.style.backgroundColor = `rgb(${r}, ${g}, ${b})`;
+        }, 25);
+    }
+
+    document.addEventListener("mousemove", function(event) {
+        const x = event.screenX;
+        const y = event.screenY;
+        const coordBox = document.getElementById("mouse-coords");
+        coordBox.innerText = `鼠标坐标：X: ${x}, Y: ${y}`;
+  });
+
+    function updateWindowSize() {
+       const w = window.innerWidth;
+       const h = window.innerHeight;
+      document.getElementById("window-size").innerText = `窗口大小：宽: ${w}, 高: ${h}`;
+  }
+
+    updateWindowSize();
+    window.addEventListener("resize", updateWindowSize);
+
+    document.getElementById("hostname").innerText = "主机名：" + location.hostname;
+    document.getElementById("pathname").innerText = "路径：" + location.pathname;
+    document.getElementById("port").innerText = "端口：" + (location.port || "(默认)");
+    document.getElementById("protocol").innerText = "协议：" + location.protocol;
+
+</script>
 </html>
