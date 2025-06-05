@@ -3,6 +3,10 @@
 <head>
 <title>website_test</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="description" content="Nim 游戏（尼姆博弈）网页版，支持玩家对战 AI 或 玩家对战玩家，带动态划线动画，支持行数自定义。">
+<meta name="author" content="Miller Gao">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
 <style>
 * {
   box-sizing: border-box;
@@ -189,7 +193,7 @@ input:checked + .slider:before {
 <div class="main-area">
     <!-- LeftNav -->
     <ul class ="leftnav">
-        <li class="top">花活儿</li>
+        <li class="top">小程序</li>
         <li ><a href="index.html">主页</a></li>
         <li ><a href="gacha.html">Gacha Simulation</a></li>
         <li><a href="testPage.html">Skill Learning</a></li>
@@ -345,48 +349,143 @@ input:checked + .slider:before {
 
 <script src="script.js"></script>
 <script>
+/**
+ * 存储本轮划线过程中被命中的球（Ball 对象）
+ * 用 Set 确保不重复记录
+ */
 let hitBalls = new Set();
+
+/**
+ * 是否允许玩家划线（轮到玩家时为 true，AI 回合/游戏结束为 false）
+ */
 let drawEnabled = true;
+
+/**
+ * 当前是否正在进行划线操作（鼠标按下后置为 true，抬起后为 false）
+ */
 let isDrawing = false;
+
+/**
+ * 当前划线起点坐标（相对于棋盘 board 左上角）
+ */
 let startX = 0, startY = 0;
+
+
+/**
+ * 当前动态绘制的线条 DOM 元素
+ * 鼠标划线过程中创建，划完后移除
+ */
 let lineElem = null;
+
+/**
+ * 是否设置为 AI 先手
+ * 通过玩家界面 toggle 开关控制
+ */
 let aiFirst = false;
+
+/**
+ * 是否启用 PVP 模式（玩家 vs 玩家）
+ * true → 玩家 vs 玩家
+ * false → 玩家 vs AI
+ */
 let enablePVP = false;
+
+/**
+ * AI 是否正在进行首手随机操作
+ * true 表示 AI 首手会以 95% 概率随机划线
+ */
 let aiRandomFirstMove = false;
+
+/**
+ * 当前各行小球的个数
+ * 定义初始三行各3，5，7个小球
+ */
+const rowsData = [3, 5, 7, 0, 0, 0, 0];
+
+/**
+ * 二维数组，
+ * balls = [
+    // row 0:
+    [ Ball(0,0), Ball(0,1), Ball(0,2) ],
+
+    // row 1:
+    [ Ball(1,0), Ball(1,1), Ball(1,2), Ball(1,3), Ball(1,4) ],
+
+    // row 2:
+    [ Ball(2,0), ..., Ball(2,6) ],
+
+    // row 3 ~ 6:
+    [], [], [], []
+]
+ * 用于存储所有小球的状态（是否被划掉）
+ * 二维数组的第一维表示行号，第二维表示列号
+ */
+const balls = [];
+
+/**
+ * 动态划线的线条高度（单位：px）
+ */
 const LINE_HEIGHT = 3;
 
+/**
+ * Ball类，表示一颗小球
+ */
 class Ball {
     constructor(row, index, element) {
         this.row = row;
         this.index = index;
-        this.removed = false;
-        this.element = element;
+        this.removed = false;   //当前球是否被划掉
+        this.element = element; //DOM 元素
     }
 
+    /**
+     * 标记为已划掉，更新DOM样式
+     */
     remove() {
         this.removed = true;
         this.element.classList.add('removed'); // 显示横线
     }
 
+    /**
+     * 重置该球为“未划掉”状态，更新 DOM 样式（隐藏横线）
+     */
     reset() {
         this.removed = false;
         this.element.classList.remove('removed'); // 隐藏横线
     }
 }
 
+// 获取棋盘 DOM 元素
 const board = document.getElementById('board');
 
+/**
+ * 监听鼠标按下（mousedown）事件
+ * 功能：
+ *  - 开始绘制线条
+ *  - 记录起点坐标
+ *  - 创建动态 draw-line 线条元素
+ *  - 清空本次划线过程中命中的球集合 hitBalls
+ */
 board.addEventListener('mousedown', (e) => {
+
+    // 不允许画线则直接返回
     if (!drawEnabled) return;
+
+    // 获取棋盘相对于视口的位置和尺寸
     const rect = board.getBoundingClientRect();
+
+    // 如果鼠标点击不在棋盘内部，忽略
     if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
         return;
     }
 
     isDrawing = true;
+
+    // 计算鼠标起点相对于棋盘左上角的坐标
     startX = e.clientX - rect.left;
     startY = e.clientY - rect.top;
 
+    // 创建动态线条 DOM 元素
     lineElem = document.createElement('div');
     lineElem.classList.add('draw-line');
     lineElem.style.left = `${startX}px`;
@@ -394,74 +493,107 @@ board.addEventListener('mousedown', (e) => {
     lineElem.style.width = '0px';
     board.appendChild(lineElem);
 
+    // 清空当前划线碰撞到的球集合
     hitBalls.clear();
 });
 
+/**
+ * 监听鼠标移动事件（mousemove）
+ * 功能：
+ *  - 如果当前正在划线（isDrawing = true），根据鼠标当前位置动态调整 lineElem 的长度和角度
+ *  - 实现动态“划线”动画效果
+ */
 board.addEventListener('mousemove', (e) => {
+    // 如果当前没有在划线，或者没有正在绘制的线条元素，直接返回
     if (!isDrawing || !lineElem) return;
 
+    // 获取棋盘 board 元素相对于视口的位置和尺寸
     const rect = board.getBoundingClientRect();
+    // 计算鼠标当前相对于棋盘左上角的坐标
     let currentX = e.clientX - rect.left;
     let currentY = e.clientY - rect.top;
 
+    // 限制鼠标坐标在棋盘范围内（防止鼠标移出棋盘）
     if (currentX < 0) currentX = 0;
     if (currentX > rect.width) currentX = rect.width;
     if (currentY < 0) currentY = 0;
     if (currentY > rect.height) currentY = rect.height;
 
+    // 计算鼠标当前位置相对于划线起点的偏移量（dx, dy）
     const dx = currentX - startX;
     const dy = currentY - startY;
+    // 计算当前线段长度，勾股定理
     const distance = Math.hypot(dx, dy);
+    // 计算当前线段角度（相对于水平线，单位：度）
     const angle = Math.atan2(dy, dx) * 180 / Math.PI;
 
+    // 更新线条元素的长度和旋转角度
     lineElem.style.width = `${distance}px`;
     lineElem.style.transform = `rotate(${angle}deg)`;
 });
 
-
+/**
+ * 停止划线（mouseup / mouseleave 时调用）
+ * 功能：
+ *  - 使用最终划线位置进行碰撞检测
+ *  - 判断是否合法划线（不能跨行 / 不能跳过已删除的球）
+ *  - 更新被划掉的球状态
+ *  - 切换回合 / 触发 AI 行动 ，同时检查胜负
+ */
 function stopDrawing() {
+    // 如果当前确实在划线，且有 lineElem 存在
     if (isDrawing && lineElem) {
-        //用最终的线段做碰撞检测
+        // 获取最终线段的 DOM 区域
         const lineRect = lineElem.getBoundingClientRect();
+
+        // 遍历所有未被删除的球，检测是否与 lineRect 有交集
         balls.flat().forEach(ball => {
-            if (ball.removed) return;
+            if (ball.removed) return; // 已删除的球跳过
             const ballRect = ball.element.getBoundingClientRect();
+            // 碰撞检测逻辑（矩形相交判断）
             if (!(
                 ballRect.left > lineRect.right ||
                 ballRect.right < lineRect.left ||
                 ballRect.top > lineRect.bottom ||
                 ballRect.bottom < lineRect.top
             )) {
+                // 记录被碰撞到的球
                 hitBalls.add(ball);
             }
         });
 
+        // 移除动态划线元素
         board.removeChild(lineElem);
         lineElem = null;
 
+        // 清空提示信息
         const messageElem = document.getElementById('message');
         messageElem.textContent = '';
 
-        //没有碰到任何球，直接退出
+        // 没有碰到任何球，直接退出
         if (hitBalls.size === 0) {
             hitBalls.clear();
             isDrawing = false;
             return;
         }
 
-        //判断同一行
+        // 判断是否同一行划线
         const rows = new Set();
-        hitBalls.forEach(ball => rows.add(ball.row));
+        hitBalls.forEach(ball => rows.add(ball.row)); //用set去重查看划过球的行数
 
         if (rows.size > 1) {
+            // 非法：跨行划线
             messageElem.textContent = '你不能跨行划球！';
         } else {
-            const row = [...rows][0];
+            // 判断是否跳过 gap（中间不能跳过已删除球）
+            const row = [...rows][0]; // 当前划的行
+
+            //把 hitBalls 里的球提取出 index，排序成从小到大的数组
             const indices = Array.from(hitBalls).map(ball => ball.index).sort((a, b) => a - b);
             const minIndex = indices[0];
             const maxIndex = indices[indices.length - 1];
 
-            //检查是否跨过已划掉的球
+            // 判断是否有 gap
             let hasGap = false;
             for (let i = minIndex; i <= maxIndex; i++) {
                 const currentBall = balls[row][i];
@@ -472,65 +604,91 @@ function stopDrawing() {
             }
 
             if (hasGap) {
+                // 非法：跨过已删除球
                 messageElem.textContent = '你不能跨过已经划掉的球！';
             } else {
+                // 合法划线，删除球
                 hitBalls.forEach(ball => ball.remove());
+
+                // 单人模式
                 if(enablePVP == false){
-                    //合法：把 hitBalls 中所有球标记为 removed
                     drawEnabled = false;
                     // 检查胜负
                     if (checkWin()) {
                         document.getElementById('message').textContent = '你赢了！！';
                     } else {
+                        // 轮到 AI 回合
                         document.getElementById('message').textContent = '轮到AI回合';
-                        drawEnabled = false;
+                        // 延时触发 AI 动作
                         setTimeout(() => {
                             executeAIMove(aiMove());
                         }, 1500);
                     }
                 } else {
+                    // PVP模式
                     if (checkWin()) {
                         document.getElementById('message').textContent = '游戏结束！！';
                     }
+                    // 否则 PVP 不切换 drawEnabled，直接继续
                 }
             }
         }
-
+        // 清空状态
         hitBalls.clear();
     }
     isDrawing = false;
 }
 
+// 监听鼠标松开事件（mouseup）和鼠标移出棋盘事件（mouseleave）
+// 当玩家停止划线时，触发 stopDrawing 处理逻辑
 board.addEventListener('mouseup', stopDrawing);
 board.addEventListener('mouseleave', stopDrawing);
 
-const rowsData = [3, 5, 7, 0, 0, 0, 0,];
-const balls = [];
-
+/**
+ * 初始化棋盘
+ * 功能：
+ *  - 遍历 rowsData 数组，创建对应数量的小球（Ball 对象）
+ *  - 生成棋盘 DOM 结构
+ *  - 将 Ball 对象按行存入 balls 数组
+ */
 function initGame() {
-    const board = document.getElementById('board');
+    const board = document.getElementById('board'); // 获取棋盘 DOM
+
     rowsData.forEach((numBalls, row) => {
-        const rowDiv = document.getElementById(`row-${row}`);
-        const rowBalls = [];
+        const rowDiv = document.getElementById(`row-${row}`);   // 当前行对应的 DOM
+
+        const rowBalls = [];    // 当前行的小球数组
+
+        // 按当前行的球数 numBalls，创建 Ball 对象
         for (let i = 0; i < numBalls; i++) {
             const ballElem = document.createElement('div');
             ballElem.classList.add('ball');
 
-            // 新增一条横线元素
+            // 每个小球里加一条隐藏横线（划掉时显示）
             const lineElem = document.createElement('div');
             lineElem.classList.add('line');
             ballElem.appendChild(lineElem);
 
+            // 将小球 DOM 插入当前行
             rowDiv.appendChild(ballElem);
 
+            // 创建 Ball 对象，记录行号、位置、DOM
             const ball = new Ball(row, i, ballElem);
             rowBalls.push(ball);
         }
+
+        // 把这一行的球数组加入到 balls 总数组中（二维数组）
         balls.push(rowBalls);
     });
 }
 
-// ——————————————重重棋盘————————————————
+/**
+ * 重置棋盘
+ * 功能：
+ *  - 清空 balls 数据
+ *  - 清空 DOM 中的所有小球
+ *  - 重新根据 rowsData 重建小球数据和 DOM
+ */
 function resetGame() {
     // 清空 balls 数组
     balls.length = 0;
@@ -544,6 +702,8 @@ function resetGame() {
 
         // 新建这一行的 balls
         const rowBalls = [];
+
+        // 创建 Ball 对象，插入 DOM
         for (let i = 0; i < numBalls; i++) {
             const ballElem = document.createElement('div');
             ballElem.classList.add('ball');
@@ -558,6 +718,7 @@ function resetGame() {
             rowBalls.push(ball);
         }
 
+        // 将这一行的小球数组加入 balls
         balls.push(rowBalls);
     });
 
@@ -577,27 +738,36 @@ function resetGame() {
     }
 }
 
-//获取现阶段游戏元素的长度
+/** 
+ * 获取现阶段游戏元素的连续段（segment）长度，服务于aiMove()算法
+ * 返回 segments: [段1长度, 段2长度, ...]
+ * 同时更新 globalSegment 数组，存储每一段的位置、行号、长度
+ */
 let globalSegment = [];
 
 function getSegmentLengths() {
-    const segments = [];
-    globalSegment = [];  // 每次调用先清空
+    const segments = [];    // 返回的段长度数组
+    globalSegment = [];     // 每次调用先清空
 
     balls.forEach((rowBalls, rowIndex) => {
-        let count = 0;
-        let segmentStart = -1;
+        let count = 0;          // 当前段长度
+        let segmentStart = -1;  // 当前段起点索引（列位置）
 
+        // 遍历当前行的所有球
         rowBalls.forEach((ball, i) => {
             if (!ball.removed) {
+                // 如果球没被划掉，属于当前段
                 if (count === 0) {
-                    segmentStart = i;  // 新段起点
+                    segmentStart = i;  // 开启新段
                 }
                 count++;
             } else {
+                // 如果球已经被划掉，结束当前段
                 if (count > 0) {
-                    // 记录段
+                    // 记录段长度
                     segments.push(count);
+
+                    // 记录段详细信息
                     globalSegment.push({
                         row: rowIndex,
                         start: segmentStart,
@@ -608,7 +778,7 @@ function getSegmentLengths() {
             }
         });
 
-        // 行结束后检查最后一段
+        // 一行结束后，检查是否还有段未记录
         if (count > 0) {
             segments.push(count);
             globalSegment.push({
@@ -622,7 +792,11 @@ function getSegmentLengths() {
     return segments;
 }
 
-//洗牌
+/**
+ * 生成 0 到 x-1 的乱序数组
+ * 用 Fisher-Yates 洗牌算法打乱顺序
+ * 供 AI 在多个段中“随机选择”遍历顺序，增加多样性
+ */
 function randomArray(x) {
     const arr = [];
     for (let i = 0; i < x; i++) {
@@ -640,22 +814,31 @@ function randomArray(x) {
 
 /**
  * 计算 AI 的下一步走法
- * @returns {{
- *   row: number,         // 段所在的行号
- *   start: number,       // 段在该行中的起始索引
- *   length: number,      // 段的当前长度
- *   newValue: number,    // WM：该段减少到多少个球
- *   deleteCount: number, // AI 实际要删掉多少个球
- *   direction: string    // 'left' 或 'right'，随机决定从段起点或段末端开始删
- * }}
+ * 核心思路：
+ *  - 先计算棋盘段（getSegmentLengths）
+ *  - 如果首手且触发 95% 概率 → 随机走法（模拟“弱AI”首手）
+ *  - 否则执行最优 Nim 算法：
+ *      遍历所有段，尝试修改该段长度，使得 Nim-Sum = 0
+ *  - 如果找不到最优方案，最后用“兜底策略”随机走一步，保证永远有动作
+ *
+ * 返回对象字段：
+ * {
+ *   row: 段所在行
+ *   start: 段起始列
+ *   length: 当前段长度
+ *   newValue: 目标剩余球数（修改后该段剩余多少）
+ *   deleteCount: 实际要删多少球
+ *   direction: 'left' 或 'right'（从哪边开始删）
+ * }
  */
-
 function aiMove() {
+    // 获取当前棋盘段信息
     const segments = getSegmentLengths();
     const lengthOfSegments = segments.length;
+    // 生成段索引的随机遍历顺序
     const randomIndex = randomArray(lengthOfSegments);
 
-    // --- 如果是 AI 的首手，并且满足 95% 概率，就随机选一行一列划球 ---
+    // 如果是 AI 的首手，并且满足 95% 概率，就随机选一行一列划球
     if (aiRandomFirstMove) {
         aiRandomFirstMove = false;  // 只在首手使用一次
 
@@ -685,19 +868,19 @@ function aiMove() {
                     direction: direction
                 };
             }
-            // 上面的循环理论上一定能 return，一般不会走到这里。
         }
-        // 如果 Math.random() >= 0.9，那就直接走下面的最优算法
     }
 
-    // --- 算法 ---
+    // Nim算法
     for (let idx of randomIndex) {
         const segLen = segments[idx];
         if (segLen === 0) continue;
 
+        // 拷贝当前段长度数组，去掉当前段
         const copy = [...segments];
         copy.splice(idx, 1);
 
+        // 尝试修改当前段长度 j，使得 Nim-Sum = 0
         for (let j = segLen - 1; j >= 0; j--) {
             let xorSum = j;
             for (let v of copy) {
@@ -743,7 +926,17 @@ function aiMove() {
     };
 }
 
+/**
+ * 执行 AI 的划线动画并删除对应球
+ * 功能流程：
+ *  - 计算动画起点和终点坐标
+ *  - 动态创建 draw-line 元素
+ *  - 用 requestAnimationFrame 播放线条动画
+ *  - 动画结束后，真正删除对应球（Ball 对象状态更新 + DOM 更新）
+ *  - 判断是否胜利，轮换回合
+ */
 function executeAIMove(move) {
+    // 当前段所在行的小球数组
     const rowBalls = balls[move.row];
 
     // 根据 move.direction，先算出“动画起点球索引”和“动画终点球索引”
@@ -841,18 +1034,26 @@ function executeAIMove(move) {
     requestAnimationFrame(animate);
 }
 
+/**
+ * 检查如果所有球都被 removed，返回 true
+ */
 function checkWin() {
-    // 如果所有球都被 removed，返回 true（游戏结束）
     return balls.flat().every(ball => ball.removed);
 }
 
+// 获取“先手切换开关”的相关 DOM 元素
 const firstPlayerToggle = document.getElementById('firstPlayerToggle');
 const firstPlayerLeftLabel = document.getElementById('firstPlayerLeftLabel');
 const firstPlayerRightLabel = document.getElementById('firstPlayerRightLabel');
 const firstPlayerToggleGroup = document.getElementById('firstPlayerToggleGroup');
 
-let firstPlayerToggleEnabled = true;  // 是否允许切换
+// 当前开关是否允许切换
+let firstPlayerToggleEnabled = true;
 
+/**
+ * 更新“先手切换”开关 UI
+ * 根据 aiFirst 状态，调整左右 label 的透明度
+ */
 function updateFirstPlayerToggleUI() {
     if (aiFirst) {
         firstPlayerLeftLabel.style.opacity = '0.5';
@@ -863,8 +1064,9 @@ function updateFirstPlayerToggleUI() {
     }
 }
 
+// 监听开关变化事件
 firstPlayerToggle.addEventListener('change', () => {
-    if (!firstPlayerToggleEnabled) return;
+    if (!firstPlayerToggleEnabled) return;  // 如果当前禁止切换，直接 return
 
     aiFirst = firstPlayerToggle.checked;
     updateFirstPlayerToggleUI();
@@ -873,24 +1075,35 @@ firstPlayerToggle.addEventListener('change', () => {
 // 初始化状态
 updateFirstPlayerToggleUI();
 
-// 禁用切换
+/**
+ * 禁用“先手切换”开关
+ * 在 PVP 模式时，不能改ai先手
+ */
 function disableFirstPlayerToggle() {
     firstPlayerToggleEnabled = false;
     firstPlayerToggleGroup.classList.add('disabled');
 }
 
-// 启用切换
+/**
+ * 启用“先手切换”开关
+ * 在 玩家 vs AI 模式下，允许玩家设置谁先手
+ */
 function enableFirstPlayerToggle() {
     firstPlayerToggleEnabled = true;
     firstPlayerToggleGroup.classList.remove('disabled');
 }
 
+// 获取 PVP 模式切换相关 DOM 元素
 const pvpToggle = document.getElementById('pvpToggle');
 const pvpLeftLabel = document.getElementById('pvpLeftLabel');
 const pvpRightLabel = document.getElementById('pvpRightLabel');
 const pvpToggleGroup = document.getElementById('pvpToggleGroup');
 
-// 更新 UI
+/**
+ * 更新 PVP 模式 UI
+ * 根据 enablePVP 状态，调整左右 label 显示效果
+ * 同时决定是否启用“先手切换”开关
+ */
 function updatePvpToggleUI() {
     if (enablePVP) {
         pvpLeftLabel.style.opacity = '0.5';
@@ -907,30 +1120,42 @@ function updatePvpToggleUI() {
     }
 }
 
-// 事件监听
+// 监听 PVP 开关变化事件
 pvpToggle.addEventListener('change', () => {
     enablePVP = pvpToggle.checked;
     updatePvpToggleUI();
 });
 
-//重置游戏
+// 绑定“重新开始”按钮，点击后重置游戏
 const resetGameBtn = document.getElementById('resetGameBtn');
 resetGameBtn.addEventListener('click', resetGame);
 
+// 页面初始化时，保证 PVP toggle 显示正确
 updatePvpToggleUI();
 
 // ——————————————初始化——————————————
 initGame();
 // —————————————————————————————————
 
+// 获取“行数输入框” DOM
 const rowCountInput = document.getElementById('rowCountInput');
 
+/**
+ * 更新“每行小球数”设置区域 UI
+ * 作用：
+ *  - 动态根据当前行数，生成对应数量的“每行小球数”输入框
+ *  - 同步 rowsData 数据
+ *  - 绑定输入监听 → 改变时实时更新棋盘
+ */
 function updateRowSettingsUI() {
+    // 获取设置区块 DOM
     const rowSettingsDiv = document.getElementById('rowSettings');
     rowSettingsDiv.innerHTML = '';  // 清空之前的
 
+    // 当前总行数
     const numRows = parseInt(rowCountInput.value);
 
+    // 遍历每一行，创建对应设置输入框
     for (let row = 0; row < numRows; row++) {
         // 创建一个行容器
         const rowDiv = document.createElement('div');
@@ -989,52 +1214,23 @@ function updateRowSettingsUI() {
     }
 }
 
-rowCountInput.addEventListener('input', () => {
-    let value = rowCountInput.value.trim();
-
-    if (value === '' || isNaN(value)) {
-        rowCountInput.value = 3;
-        value = 3;
-    }
-
-    let numRows = parseInt(value);
-
-    if (numRows < 1) {
-        numRows = 1;
-        rowCountInput.value = 1;
-    } else if (numRows > 7) {
-        numRows = 7;
-        rowCountInput.value = 7;
-    }
-
-    // 更新 rowsData
-    for (let i = 0; i < rowsData.length; i++) {
-        if (i < numRows) {
-            if (typeof rowsData[i] === 'undefined') {
-                rowsData[i] = 0;
-            }
-        } else {
-            rowsData[i] = 0;
-        }
-    }
-
-    // 重新初始化棋盘
-    resetGame();
-
-    // 更新每行输入框
-    updateRowSettingsUI();
-});
-
+/**
+ * 定义“行数变化处理”函数
+ */
 function handleRowCountChange() {
+    // 读取输入框 value，并去除首尾空格
     let value = rowCountInput.value.trim();
 
+    // 防止输入空字符串 or 非数字，默认改为 3 行
     if (value === '' || isNaN(value)) {
         rowCountInput.value = 3;
         value = 3;
     }
 
+    // 转换为整数
     let numRows = parseInt(value);
 
+    // 限制合法范围 → 强制在 1 ~ 7 行之间
     if (numRows < 1) {
         numRows = 1;
         rowCountInput.value = 1;
@@ -1043,21 +1239,23 @@ function handleRowCountChange() {
         rowCountInput.value = 7;
     }
 
-    // 更新 rowsData
+    // 更新 rowsData 数据数组
     for (let i = 0; i < rowsData.length; i++) {
         if (i < numRows) {
+            // 当前行在范围内 → 如果未定义，初始化为 0
             if (typeof rowsData[i] === 'undefined') {
                 rowsData[i] = 0;
             }
         } else {
+            // 当前行超出行数范围 → 设置为 0，等于“清除”该行
             rowsData[i] = 0;
         }
     }
 
-    // 重新初始化棋盘
+    // 重新生成棋盘（根据新的 rowsData）
     resetGame();
 
-    // 更新每行输入框
+    //重新更新每行设置 UI（保证输入框同步）
     updateRowSettingsUI();
 }
 
