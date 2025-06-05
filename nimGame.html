@@ -298,6 +298,9 @@ input:checked + .slider:before {
     </ul>
 
         <div class="main-content">
+            <button id="toggleModeBtn" style="position: absolute; top: 10px; right: 10px; z-index: 1000;">
+            进入纯净游戏
+            </button>
             <h2 style="color: red;text-shadow: -1px 0 black, 0 1px black, 1px 0 black, 0 -1px black;">欢迎来到MillerRXY的网站</h2>
             <h3 id="clock" style="color: #333;">现在的时间是：--:--:--</h3>
             <hr style="margin-top: 80px;">
@@ -475,7 +478,8 @@ board.addEventListener('mousedown', (e) => {
     const rect = board.getBoundingClientRect();
 
     // 如果鼠标点击不在棋盘内部，忽略
-    if (e.clientX < rect.left || e.clientX > rect.right || e.clientY < rect.top || e.clientY > rect.bottom) {
+    if (e.clientX < rect.left || e.clientX > rect.right 
+    || e.clientY < rect.top || e.clientY > rect.bottom) {
         return;
     }
 
@@ -1148,49 +1152,43 @@ const rowCountInput = document.getElementById('rowCountInput');
  *  - 绑定输入监听 → 改变时实时更新棋盘
  */
 function updateRowSettingsUI() {
-    // 获取设置区块 DOM
     const rowSettingsDiv = document.getElementById('rowSettings');
     rowSettingsDiv.innerHTML = '';  // 清空之前的
 
-    // 当前总行数
     const numRows = parseInt(rowCountInput.value);
 
-    // 遍历每一行，创建对应设置输入框
     for (let row = 0; row < numRows; row++) {
-        // 创建一个行容器
         const rowDiv = document.createElement('div');
         rowDiv.style.display = 'flex';
         rowDiv.style.alignItems = 'center';
         rowDiv.style.marginBottom = '5px';
         rowDiv.style.gap = '8px';
 
-        // 行标签
         const label = document.createElement('label');
         label.textContent = `第 ${row + 1} 行小球数：`;
         label.style.fontWeight = 'bold';
 
-        // 行输入框
         const input = document.createElement('input');
         input.type = 'number';
         input.min = 0;
-        input.max = 15;  // 自定义你想允许的最大值
+        input.max = 15;
         input.style.width = '60px';
         input.style.textAlign = 'center';
 
-        // 设置默认值
+        // 如果 rowsData[row] 已经是 0（之前可能被清空），就按“默认”恢复；否则保持用户填的值
         if (rowsData[row] === 0) {
             if (row === 0) {
                 rowsData[row] = 3;
             } else if (row === 1) {
                 rowsData[row] = 5;
-            } else {
+            } else if (row === 2) {
                 rowsData[row] = 7;
+            } else {
+                rowsData[row] = 0;
             }
         }
-
         input.value = rowsData[row];
 
-        // 输入框监听
         input.addEventListener('input', () => {
             let value = parseInt(input.value);
             if (isNaN(value) || value < 0) {
@@ -1200,16 +1198,12 @@ function updateRowSettingsUI() {
                 value = 15;
                 input.value = 15;
             }
-
             rowsData[row] = value;
             resetGame();
         });
 
-        // 组装
         rowDiv.appendChild(label);
         rowDiv.appendChild(input);
-
-        // 添加到 settings 区域
         rowSettingsDiv.appendChild(rowDiv);
     }
 }
@@ -1217,51 +1211,118 @@ function updateRowSettingsUI() {
 /**
  * 定义“行数变化处理”函数
  */
+/**
+ * 处理“行数”变化的函数：
+ * 1. 确保输入值在 1~7 之间
+ * 2. 给“新增”的行赋默认球数（按行号）
+ * 3. 清除“超出”行范围的行数据
+ * 4. 重置棋盘 & 更新行设置 UI
+ */
 function handleRowCountChange() {
-    // 读取输入框 value，并去除首尾空格
+    // 读取输入框 value，并去除空格
     let value = rowCountInput.value.trim();
 
-    // 防止输入空字符串 or 非数字，默认改为 3 行
+    // 防止空字符串或非法输入，恢复到 3 行
     if (value === '' || isNaN(value)) {
         rowCountInput.value = 3;
-        value = 3;
+        value = '3';
     }
 
-    // 转换为整数
+    // 转为整数
     let numRows = parseInt(value);
 
-    // 限制合法范围 → 强制在 1 ~ 7 行之间
+    // 强制范围 1 ~ 7
     if (numRows < 1) {
         numRows = 1;
-        rowCountInput.value = 1;
+        rowCountInput.value = '1';
     } else if (numRows > 7) {
         numRows = 7;
-        rowCountInput.value = 7;
+        rowCountInput.value = '7';
     }
 
-    // 更新 rowsData 数据数组
+    // 遍历 rowsData，全体清零后按需要恢复默认值
     for (let i = 0; i < rowsData.length; i++) {
         if (i < numRows) {
-            // 当前行在范围内 → 如果未定义，初始化为 0
-            if (typeof rowsData[i] === 'undefined') {
-                rowsData[i] = 0;
+            // 这一行是“保留范围”内
+            // 如果 rowsData[i] === 0（之前可能被清空），就按行号恢复默认
+            // 否则保留用户曾经修改过的值
+            if (rowsData[i] === 0) {
+                if (i === 0) {
+                    rowsData[i] = 3;
+                } else if (i === 1) {
+                    rowsData[i] = 5;
+                } else if (i === 2) {
+                    rowsData[i] = 7;
+                } else {
+                    rowsData[i] = 0;
+                }
             }
         } else {
-            // 当前行超出行数范围 → 设置为 0，等于“清除”该行
+            // 这一行超出了行数范围 → 置为 0
             rowsData[i] = 0;
         }
     }
 
-    // 重新生成棋盘（根据新的 rowsData）
+    // 重新绘制棋盘
     resetGame();
 
-    //重新更新每行设置 UI（保证输入框同步）
+    // 重新生成每行设置 UI
     updateRowSettingsUI();
 }
 
 rowCountInput.addEventListener('input', handleRowCountChange);
+
 updateRowSettingsUI();
 
+// 判断 URL 是否带 hideNav 参数
+function isHideNav() {
+    const urlParams = new URLSearchParams(window.location.search);
+    return urlParams.get('hideNav') === '1';
+}
+
+// 执行隐藏导航栏
+function hideNavbars() {
+    const topnav = document.querySelector('.topnav');
+    const leftnav = document.querySelector('.leftnav');
+    if (topnav) topnav.style.display = 'none';
+    if (leftnav) leftnav.style.display = 'none';
+}
+
+// 执行显示导航栏
+function showNavbars() {
+    const topnav = document.querySelector('.topnav');
+    const leftnav = document.querySelector('.leftnav');
+    if (topnav) topnav.style.display = '';
+    if (leftnav) leftnav.style.display = '';
+}
+
+// 初始化，根据 URL 参数控制初始状态
+if (isHideNav()) {
+    hideNavbars();
+    // 更新按钮文本
+    document.addEventListener('DOMContentLoaded', () => {
+        const toggleBtn = document.getElementById('toggleModeBtn');
+        if (toggleBtn) {
+            toggleBtn.textContent = '返回主界面';
+        }
+    });
+}
+
+// 按钮点击事件，切换模式
+document.addEventListener('DOMContentLoaded', () => {
+    const toggleBtn = document.getElementById('toggleModeBtn');
+    if (!toggleBtn) return;
+
+    toggleBtn.addEventListener('click', () => {
+        if (isHideNav()) {
+            // 当前是纯净模式 → 回到主界面（去掉 hideNav 参数）
+            window.location.href = window.location.pathname; // 重新跳转，不带参数
+        } else {
+            // 当前是主界面 → 进入纯净模式
+            window.location.href = window.location.pathname + '?hideNav=1';
+        }
+    });
+});
 
 </script>
 </body>
