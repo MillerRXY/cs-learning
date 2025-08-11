@@ -46,7 +46,7 @@
 <body>
   <header>Pixelated curve</header>
   <div id="stageWrap">
-    <!-- The viewBox is large; we draw a grid inside it. -->
+    <!-- Initial viewBox; canvas will auto-resize when grid size changes -->
     <svg id="stage" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1200" preserveAspectRatio="xMidYMid meet">
       <g id="grid"></g>
       <g id="pixels"></g>
@@ -62,7 +62,7 @@
   <aside>
     <div class="row">
       <label style="width:90px">Grid size</label>
-      <input id="gridSize" type="range" min="4" max="20" step="1" value="6" />
+      <input id="gridSize" type="range" min="2" max="40" step="1" value="6" />
       <span id="gridSizeVal">6</span>
     </div>
     <div class="row">
@@ -75,8 +75,19 @@
       <input id="rulerTgl" type="checkbox" />
     </div>
     <div class="row">
+      <label style="width:90px">Link rulers</label>
+      <input id="linkTgl" type="checkbox" />
+      <span style="font-size:12px;opacity:.75">（保持两侧长度与角度一致）</span>
+    </div>
+    <div class="row">
       <button id="copyBtn">Copy 2D array of curve to clipboard</button>
     </div>
+    <hr>
+    <div style="font-weight:600;margin-top:8px">Place by coordinates</div>
+    <div class="row"><label style="width:60px">x1</label><input id="x1" type="number" step="1" value="-200" style="width:110px"><label style="width:40px">z1</label><input id="z1" type="number" step="1" value="-10" style="width:110px"></div>
+    <div class="row"><label style="width:60px">x2</label><input id="x2" type="number" step="1" value="200" style="width:110px"><label style="width:40px">z2</label><input id="z2" type="number" step="1" value="10" style="width:110px"></div>
+    <div class="row"><button id="placeBtn">Place endpoints</button></div>
+    <div id="deltaInfo" style="font-size:12px;opacity:.85"></div>
     <div id="dimInfo" style="font-size:12px; opacity:.8"></div>
   </aside>
 
@@ -99,8 +110,15 @@
     const curveWidthEl = document.getElementById('curveWidth');
     const curveWidthVal = document.getElementById('curveWidthVal');
     const rulerTgl = document.getElementById('rulerTgl');
+    const linkTgl  = document.getElementById('linkTgl');
     const copyBtn = document.getElementById('copyBtn');
     const dimInfo = document.getElementById('dimInfo');
+    const deltaInfo = document.getElementById('deltaInfo');
+    const placeBtn = document.getElementById('placeBtn');
+    const x1El = document.getElementById('x1');
+    const z1El = document.getElementById('z1');
+    const x2El = document.getElementById('x2');
+    const z2El = document.getElementById('z2');
 
     // Helpers
     const svgns = 'http://www.w3.org/2000/svg';
@@ -173,7 +191,7 @@
       dimInfo.textContent = `Array size: [rows=${rows}] x [cols=${cols}] (cell=${g}px)`;
     }
 
-    // Draw the background grid once per change
+    // Draw background grid
     function drawGrid() {
       const g = +gridSizeEl.value; gridSizeVal.textContent = g;
       gridG.innerHTML = '';
@@ -192,27 +210,111 @@
       rulersG.appendChild(el('circle', { cx:C2.x, cy:C2.y, r:5, class:'rulerDot' }));
     }
 
-    function redraw() { curveWidthVal.textContent = curveWidthEl.value; drawGrid(); drawCurvePath(); drawPixels(); drawRulers(); }
+    // —— Canvas auto-resize when grid size changes ——
+    const base = {
+      g0: +gridSizeEl.value,
+      cols: Math.floor(svg.viewBox.baseVal.width  / +gridSizeEl.value),
+      rows: Math.floor(svg.viewBox.baseVal.height / +gridSizeEl.value)
+    };
+    let lastVBW = svg.viewBox.baseVal.width;
+    let lastVBH = svg.viewBox.baseVal.height;
+
+    function setCanvasSizeByCells(cols, rows) {
+      // Update base to new logical size so future resizes keep this cell count
+      base.cols = Math.max(cols, 1);
+      base.rows = Math.max(rows, 1);
+      const g = +gridSizeEl.value;
+      const w = base.cols * g;
+      const h = base.rows * g;
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.style.width  = w + 'px';
+      svg.style.height = h + 'px';
+      lastVBW = w; lastVBH = h;
+    }
+
+    function resizeCanvasWithGrid() {
+      // Keep cell count constant, scale canvas with cell size
+      const g = +gridSizeEl.value;
+      const w = base.cols * g;
+      const h = base.rows * g;
+
+      // Scale control points proportionally so geometry keeps its look
+      const kx = w / lastVBW, ky = h / lastVBH;
+      ['p1','p2','c1','c2'].forEach(id => {
+        const node = pts[id];
+        const x = +node.getAttribute('cx') * kx;
+        const y = +node.getAttribute('cy') * ky;
+        setPt(node, x, y);
+      });
+
+      svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
+      svg.style.width  = w + 'px';
+      svg.style.height = h + 'px';
+      lastVBW = w; lastVBH = h;
+    }
+
+    function redraw() {
+      curveWidthVal.textContent = curveWidthEl.value;
+      drawGrid();
+      drawCurvePath();
+      drawPixels();
+      drawRulers();
+    }
 
     // Dragging behavior
     let drag = null; let offset = {x:0,y:0};
+
+    // Keep ruler vectors identical when link is enabled
+    function applyRulerLinkFrom(sourceId){
+    if(!linkTgl.checked) return;
+    const P1 = getPt(pts.p1), P2 = getPt(pts.p2), C1 = getPt(pts.c1), C2 = getPt(pts.c2);
+    if(sourceId==='c1'||sourceId==='p1'){
+        const vx = C1.x - P1.x, vy = C1.y - P1.y;
+        // 镜像：方向取反
+        setPt(pts.c2, P2.x - vx, P2.y - vy);
+    } else if(sourceId==='c2'||sourceId==='p2'){
+        const vx = C2.x - P2.x, vy = C2.y - P2.y;
+        setPt(pts.c1, P1.x - vx, P1.y - vy);
+    }
+    }
     function ptFromEvt(evt) {
       const pt = svg.createSVGPoint();
       pt.x = evt.clientX; pt.y = evt.clientY;
       const res = pt.matrixTransform(svg.getScreenCTM().inverse());
       return {x:res.x, y:res.y};
     }
-    function mdown(e){ if(!(e.target.classList.contains('ctrl'))) return; drag = e.target; const p = ptFromEvt(e); offset.x = p.x - +drag.getAttribute('cx'); offset.y = p.y - +drag.getAttribute('cy'); }
-    function mmove(e){ if(!drag) return; const p = ptFromEvt(e); setPt(drag, p.x - offset.x, p.y - offset.y); redraw(); }
+    function mdown(e){
+      if(!(e.target.classList.contains('ctrl') || e.target.id === 'p1' || e.target.id === 'p2')) return;
+      drag = e.target; const p = ptFromEvt(e); offset.x = p.x - +drag.getAttribute('cx'); offset.y = p.y - +drag.getAttribute('cy');
+    }
+    function mmove(e){
+      if(!drag) return;
+      const p = ptFromEvt(e);
+      setPt(drag, p.x - offset.x, p.y - offset.y);
+      if (linkTgl && linkTgl.checked) {
+        const id = drag.getAttribute('id');
+        applyRulerLinkFrom(id);
+      }
+      redraw();
+    }
     function mup(){ drag = null; }
 
     svg.addEventListener('mousedown', mdown);
     window.addEventListener('mousemove', mmove);
     window.addEventListener('mouseup', mup);
 
-    gridSizeEl.addEventListener('input', redraw);
+    gridSizeEl.addEventListener('input', () => { resizeCanvasWithGrid(); redraw(); });
     curveWidthEl.addEventListener('input', redraw);
     rulerTgl.addEventListener('change', redraw);
+    if (typeof linkTgl !== 'undefined') {
+      linkTgl.addEventListener('change', () => {
+        if (linkTgl.checked) {
+          // Sync c2 from c1 by default when enabling link
+          applyRulerLinkFrom('c1');
+          redraw();
+        }
+      });
+    }
 
     let cachedArray = [];
     copyBtn.addEventListener('click', async () => {
@@ -227,7 +329,51 @@
       }
     });
 
+    // —— Place endpoints from (x1,z1) -> (x2,z2) ——
+    function placeFromCoords() {
+      const g = +gridSizeEl.value;
+      const x1 = +x1El.value, z1 = +z1El.value;
+      const x2 = +x2El.value, z2 = +z2El.value;
+      const dx = x2 - x1; // + → right
+      const dz = z2 - z1; // + → down (since -z is up)
+
+      // human-readable delta
+      const horiz = dx === 0 ? '水平不变' : (dx>0 ? `向右 ${dx}` : `向左 ${-dx}`);
+      const vert  = dz === 0 ? '垂直不变' : (dz>0 ? `向下 ${dz}` : `向上 ${-dz}`);
+      deltaInfo.textContent = `Δx=${dx}, Δz=${dz} → ${horiz}，${vert}（单位：格）`;
+
+      // Ensure canvas is big enough (add padding cells around)
+      const pad = 40;
+      const needCols = Math.max(base.cols, Math.abs(dx) + pad);
+      const needRows = Math.max(base.rows, Math.abs(dz) + pad);
+      setCanvasSizeByCells(needCols, needRows);
+
+      // Center the segment in canvas
+      const cx = svg.viewBox.baseVal.width / 2;
+      const cy = svg.viewBox.baseVal.height / 2;
+      const halfX = (dx * g) / 2;
+      const halfY = (dz * g) / 2;
+
+      const p1x = cx - halfX, p1y = cy - halfY;
+      const p2x = cx + halfX, p2y = cy + halfY;
+      setPt(pts.p1, p1x, p1y);
+      setPt(pts.p2, p2x, p2y);
+
+      // Initialize rulers on the straight line (1/3 & 2/3 along the segment)
+      const c1x = p1x + (p2x - p1x) / 3;
+      const c1y = p1y + (p2y - p1y) / 3;
+      const c2x = p1x + (p2x - p1x) * 2 / 3;
+      const c2y = p1y + (p2y - p1y) * 2 / 3;
+      setPt(pts.c1, c1x, c1y);
+      setPt(pts.c2, c2x, c2y);
+
+      redraw();
+    }
+
+    placeBtn.addEventListener('click', placeFromCoords);
+
     // initial draw
+    resizeCanvasWithGrid();
     redraw();
   </script>
 </body>
