@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pixelated curve</title>
+  <style>
+    :root {
+      --panel-w: 320px;
+      --bg: #e5e5e5;
+      --grid-line: #ddd;
+      --pixel: #666;
+      --point: #c00;
+      --ruler: #00c;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+      background: var(--bg); color: #111;
+      display: grid; grid-template-columns: 1fr var(--panel-w);
+      grid-template-rows: auto 1fr; height: 100vh;
+    }
+    header { grid-column: 1 / -1; background:#bbb; padding: 10px 16px; font-weight: 600; }
+    #stageWrap { overflow: auto; }
+    #stage { width: 1600px; height: 1000px; background: #f5f5f5; display:block; }
+    aside { padding: 12px; border-left: 1px solid #cfcfcf; background:#dcdcdc; }
+
+    /* Controls */
+    .row { display:flex; align-items:center; gap:10px; margin:10px 0; }
+    .row input[type="range"] { flex: 1; }
+    button { padding:8px 10px; border-radius:8px; border:1px solid #888; background:#fff; cursor:pointer; }
+
+    /* SVG styling */
+    svg { touch-action: none; }
+    .gridline { stroke: var(--grid-line); stroke-width: 1; }
+    .pixel { fill: var(--pixel); }
+    .ctrl { fill: transparent; stroke: var(--point); stroke-width: 2; }
+    .ctrl:hover { fill: var(--point); cursor: grab; }
+    .ctrl:active { cursor: grabbing; }
+    .rulerLine { stroke: #999; stroke-dasharray: 5 4; stroke-width:1; }
+    .rulerDot { fill: transparent; stroke: var(--ruler); stroke-width: 2; }
+    .rulerDot:hover { fill: var(--ruler); cursor: grab; }
+    .endcap { pointer-events: none; opacity: 0.35; }
+  </style>
+</head>
+<body>
+  <header>Pixelated curve</header>
+  <div id="stageWrap">
+    <!-- The viewBox is large; we draw a grid inside it. -->
+    <svg id="stage" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 1200" preserveAspectRatio="xMidYMid meet">
+      <g id="grid"></g>
+      <g id="pixels"></g>
+      <g id="rulers"></g>
+      <path id="curve" fill="none" stroke="#000" stroke-width="4" stroke-linecap="round" class="endcap"/>
+      <!-- control points (endpoints p1, p2; control c1, c2) -->
+      <circle id="p1" class="ctrl" r="10" cx="200" cy="120" />
+      <circle id="p2" class="ctrl" r="10" cx="1200" cy="820" />
+      <circle id="c1" class="ctrl" r="8"  cx="40"  cy="800" />
+      <circle id="c2" class="ctrl" r="8"  cx="900" cy="60"  />
+    </svg>
+  </div>
+  <aside>
+    <div class="row">
+      <label style="width:90px">Grid size</label>
+      <input id="gridSize" type="range" min="4" max="20" step="1" value="6" />
+      <span id="gridSizeVal">6</span>
+    </div>
+    <div class="row">
+      <label style="width:90px">Curve width</label>
+      <input id="curveWidth" type="range" min="1" max="18" step="1" value="6" />
+      <span id="curveWidthVal">6</span>
+    </div>
+    <div class="row">
+      <label style="width:90px">Ruler</label>
+      <input id="rulerTgl" type="checkbox" />
+    </div>
+    <div class="row">
+      <button id="copyBtn">Copy 2D array of curve to clipboard</button>
+    </div>
+    <div id="dimInfo" style="font-size:12px; opacity:.8"></div>
+  </aside>
+
+  <script>
+    const svg = document.getElementById('stage');
+    const gridG = document.getElementById('grid');
+    const pixelsG = document.getElementById('pixels');
+    const rulersG = document.getElementById('rulers');
+    const curve = document.getElementById('curve');
+
+    const pts = {
+      p1: document.getElementById('p1'),
+      p2: document.getElementById('p2'),
+      c1: document.getElementById('c1'),
+      c2: document.getElementById('c2')
+    };
+
+    const gridSizeEl = document.getElementById('gridSize');
+    const gridSizeVal = document.getElementById('gridSizeVal');
+    const curveWidthEl = document.getElementById('curveWidth');
+    const curveWidthVal = document.getElementById('curveWidthVal');
+    const rulerTgl = document.getElementById('rulerTgl');
+    const copyBtn = document.getElementById('copyBtn');
+    const dimInfo = document.getElementById('dimInfo');
+
+    // Helpers
+    const svgns = 'http://www.w3.org/2000/svg';
+    function el(tag, attrs) { const e = document.createElementNS(svgns, tag); for (const k in attrs) e.setAttribute(k, attrs[k]); return e; }
+
+    function getPt(circle) { return { x: +circle.getAttribute('cx'), y: +circle.getAttribute('cy') }; }
+    function setPt(circle, x, y) { circle.setAttribute('cx', x); circle.setAttribute('cy', y); }
+
+    function cubicAt(t, p0, p1, p2, p3) {
+      const mt = 1 - t;
+      return (
+        mt*mt*mt*p0 + 3*mt*mt*t*p1 + 3*mt*t*t*p2 + t*t*t*p3
+      );
+    }
+
+    function sampleBezier(n=800) {
+      const P1 = getPt(pts.p1), P2 = getPt(pts.p2), C1 = getPt(pts.c1), C2 = getPt(pts.c2);
+      const ptsArr = [];
+      for (let i=0;i<=n;i++) {
+        const t = i/n;
+        const x = cubicAt(t, P1.x, C1.x, C2.x, P2.x);
+        const y = cubicAt(t, P1.y, C1.y, C2.y, P2.y);
+        ptsArr.push([x,y]);
+      }
+      return ptsArr;
+    }
+
+    function drawCurvePath() {
+      const P1 = getPt(pts.p1), P2 = getPt(pts.p2), C1 = getPt(pts.c1), C2 = getPt(pts.c2);
+      curve.setAttribute('d', `M ${P1.x} ${P1.y} C ${C1.x} ${C1.y}, ${C2.x} ${C2.y}, ${P2.x} ${P2.y}`);
+    }
+
+    // Pixelize curve into grid cells
+    function drawPixels() {
+      const g = +gridSizeEl.value;
+      const half = +curveWidthEl.value / 2 * g; // radius in px
+      const samples = sampleBezier(1200);
+      pixelsG.innerHTML = '';
+
+      // Use a set to avoid duplicate cells
+      const marked = new Set();
+      function key(ix,iy){ return ix+','+iy; }
+
+      // mark cells around each sample point within radius
+      for (const [x,y] of samples) {
+        const minIx = Math.max(0, Math.floor((x-half)/g));
+        const maxIx = Math.floor((x+half)/g);
+        const minIy = Math.max(0, Math.floor((y-half)/g));
+        const maxIy = Math.floor((y+half)/g);
+        for (let iy=minIy; iy<=maxIy; iy++) {
+          for (let ix=minIx; ix<=maxIx; ix++) {
+            // approximate disk test (center-to-center)
+            const cx = ix*g + g/2, cy = iy*g + g/2;
+            const dx = cx - x, dy = cy - y;
+            if (dx*dx + dy*dy <= half*half) marked.add(key(ix,iy));
+          }
+        }
+      }
+
+      // draw rects
+      for (const k of marked) {
+        const [ix,iy] = k.split(',').map(Number);
+        pixelsG.appendChild(el('rect', { x: ix*g+1, y: iy*g+1, width: g-2, height: g-2, class: 'pixel' }));
+      }
+
+      // Build 2D array data for copy
+      const cols = Math.floor(svg.viewBox.baseVal.width / g);
+      const rows = Math.floor(svg.viewBox.baseVal.height / g);
+      cachedArray = Array.from({length: rows}, (_,iy) => Array.from({length: cols}, (_,ix) => marked.has(key(ix,iy)) ? 1 : 0));
+      dimInfo.textContent = `Array size: [rows=${rows}] x [cols=${cols}] (cell=${g}px)`;
+    }
+
+    // Draw the background grid once per change
+    function drawGrid() {
+      const g = +gridSizeEl.value; gridSizeVal.textContent = g;
+      gridG.innerHTML = '';
+      const w = svg.viewBox.baseVal.width, h = svg.viewBox.baseVal.height;
+      for (let x=0; x<=w; x+=g) gridG.appendChild(el('line', { x1:x, y1:0, x2:x, y2:h, class:'gridline' }));
+      for (let y=0; y<=h; y+=g) gridG.appendChild(el('line', { x1:0, y1:y, x2:w, y2:y, class:'gridline' }));
+    }
+
+    function drawRulers() {
+      rulersG.innerHTML = '';
+      if (!rulerTgl.checked) return;
+      const P1 = getPt(pts.p1), P2 = getPt(pts.p2), C1 = getPt(pts.c1), C2 = getPt(pts.c2);
+      rulersG.appendChild(el('line', { x1:P1.x, y1:P1.y, x2:C1.x, y2:C1.y, class:'rulerLine' }));
+      rulersG.appendChild(el('line', { x1:P2.x, y1:P2.y, x2:C2.x, y2:C2.y, class:'rulerLine' }));
+      rulersG.appendChild(el('circle', { cx:C1.x, cy:C1.y, r:5, class:'rulerDot' }));
+      rulersG.appendChild(el('circle', { cx:C2.x, cy:C2.y, r:5, class:'rulerDot' }));
+    }
+
+    function redraw() { curveWidthVal.textContent = curveWidthEl.value; drawGrid(); drawCurvePath(); drawPixels(); drawRulers(); }
+
+    // Dragging behavior
+    let drag = null; let offset = {x:0,y:0};
+    function ptFromEvt(evt) {
+      const pt = svg.createSVGPoint();
+      pt.x = evt.clientX; pt.y = evt.clientY;
+      const res = pt.matrixTransform(svg.getScreenCTM().inverse());
+      return {x:res.x, y:res.y};
+    }
+    function mdown(e){ if(!(e.target.classList.contains('ctrl'))) return; drag = e.target; const p = ptFromEvt(e); offset.x = p.x - +drag.getAttribute('cx'); offset.y = p.y - +drag.getAttribute('cy'); }
+    function mmove(e){ if(!drag) return; const p = ptFromEvt(e); setPt(drag, p.x - offset.x, p.y - offset.y); redraw(); }
+    function mup(){ drag = null; }
+
+    svg.addEventListener('mousedown', mdown);
+    window.addEventListener('mousemove', mmove);
+    window.addEventListener('mouseup', mup);
+
+    gridSizeEl.addEventListener('input', redraw);
+    curveWidthEl.addEventListener('input', redraw);
+    rulerTgl.addEventListener('change', redraw);
+
+    let cachedArray = [];
+    copyBtn.addEventListener('click', async () => {
+      try {
+        const txt = JSON.stringify(cachedArray);
+        await navigator.clipboard.writeText(txt);
+        copyBtn.textContent = 'Copied!';
+        setTimeout(() => copyBtn.textContent = 'Copy 2D array of curve to clipboard', 1000);
+      } catch (e) {
+        alert('Clipboard failed. Here is the array in console.');
+        console.log(cachedArray);
+      }
+    });
+
+    // initial draw
+    redraw();
+  </script>
+</body>
+</html>

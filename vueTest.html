@@ -1,0 +1,22 @@
+<div id="app">
+    <button @click="toggle">切换显示</button>
+    <p v-if="isVisible">我是可以显示/隐藏的段落</p>
+</div>
+
+<script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+<script>
+    const { createApp } = Vue;
+
+    createApp({
+        data() {
+            return {
+                isVisible: true
+            }
+        },
+        methods: {
+            toggle() {
+                this.isVisible = !this.isVisible;
+            }
+        }
+    }).mount('#app');
+</script>

@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<title>website_test</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta charset="UTF-8">
+<meta name="description" content="">
+<meta name="author" content="Miller Gao">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<script src="https://cdn.jsdelivr.net/npm/vue@2/dist/vue.js"></script> <!-- 引入Vue2 -->
+<style>
+
+* {
+    box-sizing: border-box;
+}
+
+/* 输入框通用样式 */
+.matrix1Style input[type="text"] {
+    width: 60px;
+    max-width: 200px;
+    min-width: 20px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: clip;
+    padding: 4px;
+    box-sizing: border-box;
+    text-align: center;
+    background-color: #dedede;
+    margin: 30px 40px;
+    border:#929292 1px solid;
+}
+
+.matrix1Style td {
+  border: 1px solid #929292;
+}
+
+.matrix1Style tr:first-child td {
+  border-top: none;    /* 上边无线 */
+}
+.matrix1Style tr:last-child td {
+  border-bottom: none; /* 下边无线 */
+}
+.matrix1Style td:first-child {
+  border-left: none;   /* 左边无线 */
+}
+.matrix1Style td:last-child {
+  border-right: none;  /* 右边无线 */
+}
+
+.matrix1Style input[type="number"]:hover {
+  background-color: #f0f0f0;
+}
+
+</style>
+<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+<div class ="layout">
+<!-- TopNav -->
+<ul class="topnav">
+    <li class="active"><a href="index.html">Home</a></li>
+    <li class="dropdown">
+        <a href="#news">News</a>
+        <div class="dropdown-content">
+            <a href="#local">Local</a>
+            <a href="#international">International</a>
+            <a href="#opinion">Opinion</a>
+        </div>
+    </li>
+    <li><a href="#contact">Contact</a></li>
+    <li><a href="#about">About</a></li>
+</ul>
+<div class="main-area" id="app">
+    <div class="main-content">
+        <div class = matrixInput1>
+        <h4>请输入维度</h4>
+        <input type='number' v-model='dimension' min=2 max=10 @change='generateMatrix1'></input>
+
+        <table v-if="matrix1.length" class='matrix1Style' :style="tableStyle">
+        <tr v-for="(row, i) in matrix1" :key="i">
+            <td v-for="(val, j) in row" :key="j">
+            <input v-model="matrix1[i][j]" type="text" @blur="validateCell(i, j)"/>
+            </td>
+        </tr>
+        </table>  
+        <button @click="computeDeterminant">计算行列式</button>
+        <p>行列式的值为：{{ result }}</p>
+        </div>>
+    </div>
+</div>
+</div>
+
+<script src="script.js"></script>
+<script>
+    new Vue({
+        el: '#app',
+        data: {
+            dimension: 2,    // 维度
+            matrix1: [],      // 矩阵1
+            result: null
+        },
+        methods: {
+            generateMatrix1() {
+            const n = this.dimension;
+            const newMatrix = [];
+
+            for (let i = 0; i < n; i++) {
+                const row = [];
+                for (let j = 0; j < n; j++) {
+                    // 尝试保留原来的值
+                    const oldValue = this.matrix1[i]?.[j];
+                    row.push(typeof oldValue === 'number' ? oldValue : 0);
+                }
+                newMatrix.push(row);
+            }
+
+            this.matrix1 = newMatrix;
+            },
+
+            computeDeterminant() {
+            const mat = this.matrix1;
+            const n = mat.length;
+
+            const determinant = (a) => {
+                if (a.length === 1) return a[0][0];
+                if (a.length === 2) return a[0][0] * a[1][1] - a[0][1] * a[1][0];
+
+                let det = 0;
+                for (let i = 0; i < a.length; i++) {
+                    const minor = a.slice(1).map(row => row.filter((_, j) => j !== i));
+                    det += ((i % 2 === 0 ? 1 : -1) * a[0][i] * determinant(minor));
+                }
+                return det;
+                };
+
+                this.result = determinant(mat);
+            },
+
+            validateCell(i, j) {
+                // 先把输入的内容转成字符串并去空格
+                const raw = String(this.matrix1[i][j]).trim();
+
+                // 分数判断 a/b/....
+                if (raw.includes('/')) {
+                    const parts = raw.split('/');
+                    const numbers = parts.map(str => parseFloat(str));
+
+                    // 检查是否全部合法数字
+                    if (numbers.some(n => isNaN(n) || n === 0)) {
+                        this.$set(this.matrix1[i],j , 0);
+                        return;
+                    }
+
+                    // 从第一个数开始，连续除后面的
+                    let result = numbers[0];
+                    for (let k = 1; k < numbers.length; k++) {
+                        result /= numbers[k];
+                    }
+
+                    this.$set(this.matrix1[i], j, Number(result.toFixed(6)));
+                    return;
+                }
+
+                // 纯数字判断
+                if (raw !== '' && !isNaN(raw)) {
+                    this.matrix1[i][j] = Number(raw);
+                    return;
+                }
+
+                // 其他非法输入
+                alert(`非法输入！！`);
+                this.$set(this.matrix1[i],j , 0);
+            }
+        },
+
+        computed: {
+            tableStyle() {
+                return this.matrix1.length >= 7
+                ? { tableLayout: 'fixed', width: '100%' }
+                : {};
+            }
+        
+        },
+        mounted(){
+            this.generateMatrix1();
+        }
+    })
+</script>
+</body>
+
+</html>
