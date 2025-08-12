@@ -70,6 +70,16 @@
     <div class="row">
       <button id="copyBtn">Copy 2D array of curve to clipboard</button>
     </div>
+    <div class="row">
+      <button id="copyCurveBtn">Copy curve JSON</button>
+    </div>
+    <div class="row" style="align-items:stretch">
+      <textarea id="curveJsonIn" rows="3" placeholder='Paste curve JSON here' style="width:100%; resize:vertical"></textarea>
+    </div>
+    <div class="row">
+      <button id="loadCurveBtn">Load curve from JSON</button>
+      <span id="loadErr" class="hint"></span>
+    </div>
     <hr>
     <div class="row"><label style="width:50px">x1</label><input id="x1" type="number" step="1" value="-200"><label style="width:40px">z1</label><input id="z1" type="number" step="1" value="-10"></div>
     <div class="row"><label style="width:50px">x2</label><input id="x2" type="number" step="1" value="200"><label style="width:40px">z2</label><input id="z2" type="number" step="1" value="10"></div>
@@ -95,6 +105,10 @@
     const linkTgl  = document.getElementById('linkTgl');
     const snapEndsTgl = document.getElementById('snapEndsTgl');
     const copyBtn = document.getElementById('copyBtn');
+    const copyCurveBtn = document.getElementById('copyCurveBtn');
+    const curveJsonIn = document.getElementById('curveJsonIn');
+    const loadCurveBtn = document.getElementById('loadCurveBtn');
+    const loadErr = document.getElementById('loadErr');
     const dimInfo = document.getElementById('dimInfo');
     const deltaInfo = document.getElementById('deltaInfo');
     const placeBtn = document.getElementById('placeBtn');
@@ -159,7 +173,87 @@
     snapEndsTgl.addEventListener('change',()=>{ if(snapEndsTgl.checked){ snapEndpoints(); redraw(); } });
 
     let cachedArray=[];
-    copyBtn.addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText(JSON.stringify(cachedArray)); copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy 2D array of curve to clipboard',1000); }catch(e){ alert('Clipboard failed.'); console.log(cachedArray); } });
+    copyBtn.addEventListener('click',async()=>{ try{ await navigator.clipboard.writeText(JSON.stringify(cachedArray)); copyBtn.textContent='Copied!'; setTimeout(()=>copyBtn.textContent='Copy 2D array of curve to clipboard',1000);}catch(e){ alert('Clipboard failed.'); console.log(cachedArray);} });
+
+    // ---- export/import curve JSON ----
+    function getCurveState(){
+      const g = +gridSizeEl.value;
+      const vbw = svg.viewBox.baseVal.width, vbh = svg.viewBox.baseVal.height;
+      const state = {
+        version: 1,
+        grid: g,
+        curveWidth: +curveWidthEl.value,
+        viewBox: { w: vbw, h: vbh },
+        cells: { cols: base.cols, rows: base.rows },
+        points: {
+          p1: getPt(pts.p1), p2: getPt(pts.p2), c1: getPt(pts.c1), c2: getPt(pts.c2)
+        },
+        toggles: {
+          rulers: !!rulerTgl.checked,
+          mirror: !!linkTgl.checked,
+          snapEnds: !!snapEndsTgl.checked
+        }
+      };
+      return state;
+    }
+
+    function applyCurveState(state){
+      try{
+        if(!state || typeof state !== 'object') throw new Error('Invalid state');
+        // Set toggles first to avoid accidental snapping later
+        rulerTgl.checked = !!(state.toggles && state.toggles.rulers);
+        linkTgl.checked  = !!(state.toggles && state.toggles.mirror);
+        snapEndsTgl.checked = !!(state.toggles && state.toggles.snapEnds);
+
+        if(typeof state.grid === 'number') gridSizeEl.value = state.grid;
+        if(typeof state.curveWidth === 'number') curveWidthEl.value = state.curveWidth;
+
+        // Recreate canvas size by cell counts if provided, else from viewBox
+        if(state.cells && typeof state.cells.cols==='number' && typeof state.cells.rows==='number'){
+          setCanvasSizeByCells(state.cells.cols, state.cells.rows);
+        } else if(state.viewBox && state.viewBox.w && state.viewBox.h && state.grid){
+          const cols = Math.max(1, Math.round(state.viewBox.w / state.grid));
+          const rows = Math.max(1, Math.round(state.viewBox.h / state.grid));
+          setCanvasSizeByCells(cols, rows);
+        } else {
+          resizeCanvasWithGrid();
+        }
+
+        if(state.points){
+          const {p1,p2,c1,c2} = state.points;
+          if(p1) setPt(pts.p1, p1.x, p1.y);
+          if(p2) setPt(pts.p2, p2.x, p2.y);
+          if(c1) setPt(pts.c1, c1.x, c1.y);
+          if(c2) setPt(pts.c2, c2.x, c2.y);
+        }
+        // If mirror linking is on, enforce mirror once
+        if(linkTgl.checked) applyRulerLinkFrom('c1');
+        redraw();
+        loadErr.textContent = 'Loaded.';
+      }catch(err){
+        console.error(err);
+        loadErr.textContent = 'Load failed: ' + err.message;
+      }
+    }
+
+    copyCurveBtn.addEventListener('click', async ()=>{
+      try{
+        const txt = JSON.stringify(getCurveState());
+        await navigator.clipboard.writeText(txt);
+        copyCurveBtn.textContent = 'Copied curve JSON!';
+        setTimeout(()=>copyCurveBtn.textContent='Copy curve JSON', 1200);
+      }catch(e){ alert('Clipboard failed.'); console.log(e); }
+    });
+
+    loadCurveBtn.addEventListener('click', ()=>{
+      loadErr.textContent = '';
+      try{
+        const txt = curveJsonIn.value.trim();
+        if(!txt) throw new Error('Empty input');
+        const obj = JSON.parse(txt);
+        applyCurveState(obj);
+      }catch(e){ loadErr.textContent = 'Parse error: ' + e.message; }
+    });
 
     function placeFromCoords(){ const g=+gridSizeEl.value, x1=+x1El.value, z1=+z1El.value, x2=+x2El.value, z2=+z2El.value; const dx=x2-x1, dz=z2-z1; const horiz=dx===0?'水平不变':(dx>0?`向右 ${dx}`:`向左 ${-dx}`), vert=dz===0?'垂直不变':(dz>0?`向下 ${dz}`:`向上 ${-dz}`); deltaInfo.textContent=`Δx=${dx}, Δz=${dz} → ${horiz}，${vert}（单位：格）`; const pad=40, needCols=Math.max(base.cols,Math.abs(dx)+pad), needRows=Math.max(base.rows,Math.abs(dz)+pad); setCanvasSizeByCells(needCols,needRows); const cx=svg.viewBox.baseVal.width/2, cy=svg.viewBox.baseVal.height/2, halfX=(dx*g)/2, halfY=(dz*g)/2; let p1x=cx-halfX, p1y=cy-halfY, p2x=cx+halfX, p2y=cy+halfY; if(snapEndsTgl.checked){ const s1=snapToGridCenter(p1x,p1y); const s2=snapToGridCenter(p2x,p2y); p1x=s1.x; p1y=s1.y; p2x=s2.x; p2y=s2.y; }
       setPt(pts.p1,p1x,p1y); setPt(pts.p2,p2x,p2y);
